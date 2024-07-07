@@ -1,0 +1,250 @@
+{% extends "index/index.html" %}
+
+{% block pages %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance - Week {{ week_number }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrQkTyH0PgTZ8abkM7FJqAZtN0nFgU0Gk6GG+2v6YgB0Z2VGdscb5A09ZjM9fxYySn32kHq8x1wePm7yaA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .btn-edit {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .btn-edit:hover {
+            background-color: #45a049;
+        }
+        .attendance-yes {
+            color: green;
+        }
+        .attendance-no {
+            color: red;
+        }
+        .edit-form {
+            display: none;
+        }
+        #chart-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        #attendanceChart, #completionChart {
+            max-width: 200px;
+            max-height: 200px;
+        }
+        .center-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+       
+        }
+        #capture {
+            background-color: #007bff;
+            color: white;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #capture:hover {
+            background-color: #0056b3;
+        }
+    
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var presentCount = 0;
+            var absentCount = 0;
+            var nullCount = 0;
+
+            // استخراج عدد الحضور والغياب من الجدول
+            var rows = document.querySelectorAll('tbody tr');
+            rows.forEach(function(row) {
+                var attendanceCell = row.querySelector('td:nth-child(4) span');
+                if (attendanceCell) {
+                    if (attendanceCell.classList.contains('attendance-yes')) {
+                        presentCount++;
+                    } else if (attendanceCell.classList.contains('attendance-no')) {
+                        absentCount++;
+                    } else {
+                        nullCount++;
+                    }
+                }
+            });
+
+            // حساب نسبة الحضور والغياب
+            var total = presentCount + absentCount +nullCount;
+            var presentPercentage = (presentCount / total) * 100;
+            var absentPercentage = (absentCount / total) * 100;
+
+            // حساب نسبة اكتمال الحضور
+            var totalStudents = presentCount + absentCount + nullCount;
+            var completionPercentage = ((totalStudents - nullCount) / totalStudents) * 100;
+
+            var ctx = document.getElementById('attendanceChart').getContext('2d');
+            var attendanceChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Present (' + presentPercentage.toFixed(2) + '%)', 'Absent (' + absentPercentage.toFixed(2) + '%)'],
+                    datasets: [{
+                        data: [presentCount, absentCount],
+                        backgroundColor: ['#4CAF50', '#FF0000'],
+                        hoverBackgroundColor: ['#45a049', '#FF6347']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return tooltipItem.label + ': ' + tooltipItem.raw + ' students';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            var ctxCompletion = document.getElementById('completionChart').getContext('2d');
+            var completionChart = new Chart(ctxCompletion, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed (' + completionPercentage.toFixed(2) + '%)', 'Not Completed (' + (100 - completionPercentage).toFixed(2) + '%)'],
+                    datasets: [{
+                        data: [completionPercentage, 100 - completionPercentage],
+                        backgroundColor: ['#3498db', '#D3D3D3'],
+                        hoverBackgroundColor: ['#45a049', '#DDDDDD']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return tooltipItem.label + ': ' + tooltipItem.raw.toFixed(2) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        function showEditForm(studentId) {
+            var form = document.getElementById('edit-form-' + studentId);
+            form.style.display = form.style.display === "none" ? "block" : "none";
+        }
+    </script>
+</head>
+<body>
+    
+    <h2>{{course.name}}  - <strong style="color: dodgerblue;">Week {{ week_number }} - 
+    {% if user.doctor == course.theoretical_doctor %}
+        Theoretical
+    {% elif user.doctor == course.practical_doctor %}
+    Practical
+    {% endif %}</strong></h2>
+
+
+    {% if user.doctor == course.theoretical_doctor %}
+    <div class="center-container">
+        <a id="capture" href="{% url 'photo_capture' course.id week_number 0 %}">
+            <i class="fas fa-camera"></i>
+            Take Attendance By Camera
+        </a>
+    </div>
+{% elif user.doctor == course.practical_doctor %}
+<div class="center-container">
+    <a id="capture" href="{% url 'photo_capture' course.id week_number 1 %}">
+        <i class="fas fa-camera"></i>
+        Take Attendance By Camera
+    </a>
+</div>
+{% endif %}
+    
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Attendance</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in student_attendance %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ entry.student.student_id }}</td>
+                <td>{{ entry.student.name }}</td>
+                {% if entry.attendance_record %}
+                    {% if entry.present %}
+                    <td><span class="attendance-yes">Present</span></td>
+                    {% else %}
+                    <td><span class="attendance-no">Absent</span></td>
+                    {% endif %}
+                {% else %}
+                <td><span class="">Null</span></td>
+                {% endif %}
+                <td>
+                    <button class="btn-edit" onclick="showEditForm('{{ entry.student.id }}')">Edit</button>
+                    <form id="edit-form-{{ entry.student.id }}" class="edit-form" method="post" action="{% url 'update_attendance' entry.student.id week_number course_id %}">
+                        {% csrf_token %}
+                        <select name="attendance">
+                            <option value="present" {% if entry.present %}selected{% endif %}>Present</option>
+                            <option value="absent" {% if entry.present is not None and not entry.present %}selected{% endif %}>Absent</option>
+                        </select>
+                        <button type="submit">Save</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div id="chart-container">
+        <canvas id="attendanceChart"></canvas>
+        <canvas id="completionChart"></canvas>
+    </div>
+</body>
+</html>
+{% endblock pages %}

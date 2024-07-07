@@ -1,0 +1,67 @@
+
+<!DOCTYPE html>
+{% load static %}
+{% load custom_filters %}
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance System</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script defer src="{% static 'js/scripts.js' %}"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body>
+    <div class="header">
+        <button id="toggleSidebar"><i class="fas fa-bars"></i></button>
+        <h1>UOK Attendance System</h1>
+    </div>
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <div class="teacher-profile">
+                <img src="{% static 'icons/teacher.png' %}" alt="Teacher" class="teacher-icon">
+                <div class="teacher-info">
+                    <h3>{{user.doctor.name}}</h3>
+                    <p>{{user.doctor.college.name}}</p>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <ul>
+                <li><a href="#"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
+                <li><a href="#"><i class="fas fa-cogs"></i> <span>Settings</span></a></li>
+                <li><a href="#"><i class="fas fa-chart-line"></i> <span>Reports</span></a></li>
+                <li><a href="#"><i class="fas fa-users"></i> <span>Users</span></a></li>
+              
+
+                {% for course in courses %}
+                <li class="has-submenu">
+                    <a href="#"><i class="fas fa-book"></i> <span>{{ course.name }}</span> <i class="fas fa-chevron-down submenu-toggle"></i></a>
+                    <ul class="submenu">
+                        {% for week in course.conditions.total_weeks|times %}
+                        <li><a href="{% url 'weekly_attendance' course_id=course.id week_number=week %}"><i class="fas fa-calendar-week"></i> Week {{ week|add:1 }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
+                
+                  
+
+
+            </ul>
+        </div>
+        <div class="main-content">
+          
+          {% block pages %}
+            
+          {% endblock pages %}
+            
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</body>
+</html>

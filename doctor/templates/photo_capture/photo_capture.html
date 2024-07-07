@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture Student Photo</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        #video-container {
+            position: relative;
+        }
+        #video {
+            border: 2px solid black;
+        }
+        #frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 350px;
+            height: 350px;
+            border: 3px solid blue;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+        #capture, #retake, #send ,#exit{
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+        }
+        #exit{
+            background-color: red;
+            color: white;
+        }
+        #capture {
+            background-color: #007bff;
+            color: white;
+        }
+        #retake {
+            background-color: #ffc107;
+            color: black;
+        }
+        #send {
+            background-color: #28a745;
+            color: white;
+        }
+        #capture i, #retake i, #send i,#exit i {
+            margin-right: 5px;
+        }
+        #preview {
+            display: none;
+            text-align: center;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <h1>Student Attendance Photo Capture</h1>
+    <h3>{{course.name}} || Week {{week_number}}</h3>
+    <div id="video-container">
+        <video id="video" width="640" height="480" autoplay></video>
+        <div id="frame"></div>
+    </div>
+    <button id="capture"><i class="fas fa-camera"></i> Capture Photo</button>
+    <a id="exit" href="{% url 'home' %}"><i class="fas fa-sign-out-alt"></i> Exit</a>
+    <div id="preview">
+        <img id="photo" src="" alt="Captured Photo">
+        <div>
+            <button id="retake"><i class="fas fa-redo"></i> Retake Photo</button>
+            <button id="send"><i class="fas fa-paper-plane"></i> Send Photo</button>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const captureButton = document.getElementById('capture');
+        const exitbutton=document.getElementById('exit')
+        const retakeButton = document.getElementById('retake');
+        const sendButton = document.getElementById('send');
+        const photo = document.getElementById('photo');
+        const preview = document.getElementById('preview');
+        const frame = document.getElementById('frame');
+        const constraints = {
+            video: true
+        };
+
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then((stream) => {
+                video.srcObject = stream;
+            });
+
+        captureButton.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+
+            // Hide the frame
+            frame.style.display = 'none';
+
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            photo.src = canvas.toDataURL('image/png');
+            preview.style.display = 'block';
+            video.style.display = 'none';
+            captureButton.style.display = 'none';
+            exitbutton.style.display='none'
+        });
+
+        retakeButton.addEventListener('click', () => {
+            preview.style.display = 'none';
+            video.style.display = 'block';
+            captureButton.style.display = 'block';
+
+            // Show the frame
+            frame.style.display = 'block';
+        });
+
+        sendButton.addEventListener('click', () => {
+            const dataUrl = photo.src;
+            const weekNumber = "{{ week_number }}";
+            const courseId = "{{ course.id }}";
+            const is_practical ="{{is_practical}}"
+            fetch('/receive_photo/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCookie('csrftoken')  // يجب أن تكون لديك دالة `getCookie` للحصول على `csrf` 
+                },
+                body: new URLSearchParams({
+                    'image': dataUrl,
+                    'week_number': weekNumber,
+                    'course_id': courseId,
+                    'is_practical':is_practical
+
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload(); // Reload the page to reset everything
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
