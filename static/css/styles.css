@@ -178,3 +178,16 @@ body {
     border-bottom: 1px dotted white;
     margin-bottom: 20px;
 }
+.logout-btn {
+    display: flex;
+    align-items: center;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+.logout-btn i {
+    margin-right: 5px;
+}

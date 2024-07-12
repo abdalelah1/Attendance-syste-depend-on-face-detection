@@ -27,23 +27,36 @@
                 <div class="teacher-info">
                     <h3>{{user.doctor.name}}</h3>
                     <p>{{user.doctor.college.name}}</p>
+                    <br>    
+                    <a class=""  href="{% url 'logout' %}">
+                        <i class="fa fa-sign-out"></i> 
+                    </a>
                 </div>
+
             </div>
             <div class="divider"></div>
             <ul>
-                <li><a href="#"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
-                <li><a href="#"><i class="fas fa-cogs"></i> <span>Settings</span></a></li>
-                <li><a href="#"><i class="fas fa-chart-line"></i> <span>Reports</span></a></li>
-                <li><a href="#"><i class="fas fa-users"></i> <span>Users</span></a></li>
+                <li><a href="{% url 'dashboard' %}"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
+                <!-- <li><a href="#"><i class="fas fa-cogs"></i> <span>Settings</span></a></li> -->
+                <!-- <li><a href="#"><i class="fas fa-chart-line"></i> <span>Reports</span></a></li>
+                <li><a href="#"><i class="fas fa-users"></i> <span>Users</span></a></li> -->
               
 
-                {% for course in courses %}
+                {% for course in courses  %}
                 <li class="has-submenu">
                     <a href="#"><i class="fas fa-book"></i> <span>{{ course.name }}</span> <i class="fas fa-chevron-down submenu-toggle"></i></a>
                     <ul class="submenu">
+                        {% if course.course_type == 'theoretical' %}
                         {% for week in course.conditions.total_weeks|times %}
-                        <li><a href="{% url 'weekly_attendance' course_id=course.id week_number=week %}"><i class="fas fa-calendar-week"></i> Week {{ week|add:1 }}</a></li>
+                        <li><a href="{% url 'weekly_attendance' course_id=course.id week_number=week   %}"><i class="fas fa-calendar-week"></i> Week {{ week|add:1 }}</a></li>
                         {% endfor %}
+                        {% elif course.course_type == 'practical' %}
+
+                        {% for week in course.parent_course.conditions.total_weeks|times %}
+                        <li><a href="{% url 'weekly_attendance' course_id=course.id week_number=week  %}"><i class="fas fa-calendar-week"></i> Week {{ week|add:1 }}</a></li>
+                        {% endfor %}
+                        {% endif %}
+
                     </ul>
                 </li>
                 {% endfor %}
@@ -62,6 +75,5 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 </body>
 </html>

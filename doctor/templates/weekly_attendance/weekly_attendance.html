@@ -177,28 +177,16 @@
 <body>
     
     <h2>{{course.name}}  - <strong style="color: dodgerblue;">Week {{ week_number }} - 
-    {% if user.doctor == course.theoretical_doctor %}
-        Theoretical
-    {% elif user.doctor == course.practical_doctor %}
-    Practical
-    {% endif %}</strong></h2>
-
-
-    {% if user.doctor == course.theoretical_doctor %}
+    {{course.course_type}}
+    </strong></h2>
+    {% if student_attendance  %}
     <div class="center-container">
-        <a id="capture" href="{% url 'photo_capture' course.id week_number 0 %}">
+        <a id="capture" href="{% url 'photo_capture' course.id week_number  %}">
             <i class="fas fa-camera"></i>
             Take Attendance By Camera
         </a>
     </div>
-{% elif user.doctor == course.practical_doctor %}
-<div class="center-container">
-    <a id="capture" href="{% url 'photo_capture' course.id week_number 1 %}">
-        <i class="fas fa-camera"></i>
-        Take Attendance By Camera
-    </a>
-</div>
-{% endif %}
+
     
 
     <table>
@@ -208,6 +196,7 @@
                 <th>Student ID</th>
                 <th>Name</th>
                 <th>Attendance</th>
+                <th>Summary</th>
                 <th>Action</th>
             </tr>
         </thead>
@@ -227,8 +216,15 @@
                 <td><span class="">Null</span></td>
                 {% endif %}
                 <td>
+                    {% if entry.attendance_summary %}
+                        {{ entry.attendance_summary.percentage }} %
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>
                     <button class="btn-edit" onclick="showEditForm('{{ entry.student.id }}')">Edit</button>
-                    <form id="edit-form-{{ entry.student.id }}" class="edit-form" method="post" action="{% url 'update_attendance' entry.student.id week_number course_id %}">
+                    <form id="edit-form-{{ entry.student.id }}" class="edit-form" method="post" action="{% url 'update_attendance' entry.student.id week_number course_id  %}">
                         {% csrf_token %}
                         <select name="attendance">
                             <option value="present" {% if entry.present %}selected{% endif %}>Present</option>
@@ -245,6 +241,10 @@
         <canvas id="attendanceChart"></canvas>
         <canvas id="completionChart"></canvas>
     </div>
+    {% else %}
+    <h1> there is  no students registered in this course</h1>
+    {% endif %}
+
 </body>
 </html>
 {% endblock pages %}

@@ -1,0 +1,170 @@
+{% extends "index/index.html" %}
+
+{% block pages %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container2 {
+            padding: 20px;
+        }
+        .dashboard-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .dashboard-card {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px; /* Added margin to separate cards */
+        }
+        .card-header {
+            background-color: #3498db;
+            color: white;
+            padding: 10px;
+            font-size: 16px;
+            text-align: center;
+        }
+        .card-body {
+            padding: 15px;
+        }
+        .stat-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .stat-card h6 {
+            margin: 0;
+            font-size: 14px;
+        }
+        .stat-card p {
+            margin: 0;
+            font-size: 12px;
+        }
+        .stat-card i {
+            font-size: 24px;
+            color: #007bff;
+        }
+        .chart-container {
+            position: relative;
+            height: 150px;
+        }
+        /* Added style for link */
+        .stat-card a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container2">
+        <div class="dashboard-cards">
+            {% for course, data in doctor_courses_data.items %}
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h5 class="card-title">{{ course.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="stat-card">
+                        <div>
+                            <h6>Number of Enrolled Students</h6>
+                            <p>{{ data.enrolled_students|length }}</p>
+                            <a href="{% url 'student_list' course.id 'enrolled' %}">View Students</a>
+                        </div>
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <h6>Number of Warned Students</h6>
+                            <p>{{ data.warning_students|length }}</p>
+                            <a href="{% url 'student_list' course.id 'warned' %}">View Students</a>
+                        </div>
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <h6>Number of Deprived Students</h6>
+                            <p>{{ data.deprived_students|length }}</p>
+                            <a href="{% url 'student_list' course.id 'deprived' %}">View Students</a>
+                        </div>
+                        <i class="fas fa-user-times"></i>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="courseChart{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+            </div>
+            {% if forloop.counter|divisibleby:2 and not forloop.last %}
+                </div><div class="dashboard-cards">
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        {% for course, data in doctor_courses_data.items %}
+        var ctx{{ forloop.counter }} = document.getElementById('courseChart{{ forloop.counter }}').getContext('2d');
+        var courseChart{{ forloop.counter }} = new Chart(ctx{{ forloop.counter }}, {
+            type: 'pie',
+            data: {
+                labels: ['Enrolled', 'Warned', 'Deprived'],
+                datasets: [{
+                    label: 'Student Statistics',
+                    data: [
+                        {{ data.enrolled_students|length }},
+                        {{ data.warning_students|length }},
+                        {{ data.deprived_students|length }}
+                    ],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(255, 99, 132, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        {% endfor %}
+    </script>
+</body>
+</html>
+
+{% endblock pages %}
