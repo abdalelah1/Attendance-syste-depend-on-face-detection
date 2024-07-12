@@ -3,36 +3,46 @@ import pickle
 import os
 import cv2
 from django.conf import settings
-from .models import Student
+
 import numpy as np
 def train_and_store_encodings():
-    # الحصول على كل الطلاب من قاعدة البيانات
-    students = Student.objects.all()
-    imgList = []
-    studentID = []
+    from .models import Student
+    try:
+        # الحصول على كل الطلاب من قاعدة البيانات
+        students = Student.objects.all()
+        imgList = []
+        studentID = []
 
-    # تحميل صور الطلاب وتخزينها في قائمة
-    for student in students:
-        if student.photo:
-            img_path = os.path.join(settings.MEDIA_ROOT, student.photo.name)
-            img = cv2.imread(img_path)
-            if img is not None:
-                imgList.append(img)
-                studentID.append(student.student_id)
+        # تحميل صور الطلاب وتخزينها في قائمة
+        for student in students:
+            if student.photo:
+                img_path = os.path.join(settings.MEDIA_ROOT, student.photo.name)
+                img = cv2.imread(img_path)
+                if img is not None:
+                    imgList.append(img)
+                    studentID.append(student.student_id)
 
-    # إيجاد الترميزات لكل الصور
-    encodelistKnown = find_encodings(imgList)
-    encodelistKnownID = [encodelistKnown, studentID]
+        # إيجاد الترميزات لكل الصور
+        encodelistKnown = find_encodings(imgList)
+        encodelistKnownID = [encodelistKnown, studentID]
 
-    # تأكد من أن المجلد موجود، وإن لم يكن قم بإنشائه
-    if not os.path.exists(settings.STATIC_ROOT):
-        os.makedirs(settings.STATIC_ROOT)
+        # تأكد من أن المجلد موجود، وإن لم يكن قم بإنشائه
+        if not os.path.exists(settings.STATIC_ROOT):
+            os.makedirs(settings.STATIC_ROOT)
 
-    # تخزين الترميزات في ملف داخل مجلد static
-    file_path = os.path.join(settings.STATIC_ROOT, 'EncodeFile.p')
-    with open(file_path, 'wb') as file:
-        pickle.dump(encodelistKnownID, file)
+        # تحديد مسار الملف داخل مجلد static
+        file_path = os.path.join(settings.STATIC_ROOT, 'EncodeFile.p')
 
+        # التحقق من وجود الملف السابق وحذفه إذا كان موجودًا
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        # تخزين الترميزات في ملف داخل مجلد static
+        with open(file_path, 'wb') as file:
+            pickle.dump(encodelistKnownID, file)
+        print('Encodings training and storage finished successfully.')
+    except Exception as e:
+        raise RuntimeError(f"An error occurred during encoding training and storage: {e}")
 def find_encodings(imagesList):
     encodelist = []
     for img in imagesList:

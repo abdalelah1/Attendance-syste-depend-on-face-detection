@@ -193,7 +193,7 @@ def receive_photo(request):
                 attendance_record.save()
             
             # Calculate the absence percentage
-            AttendanceSummary.calculate_absence_percentage(student, course)
+            calculate_absence_percentage(student, course)
             
             return JsonResponse({'message': f'Photo received successfully! Student Name: {student.name} , Student ID: {student.student_id} '})
         else:

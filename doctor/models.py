@@ -3,6 +3,8 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+
+from doctor.recognize_student import train_and_store_encodings
 class College(models.Model):
     name = models.CharField(max_length=255)
     warning_threshold = models.DecimalField(max_digits=5, decimal_places=2, default=12)  # نسبة الإنذار
@@ -46,6 +48,16 @@ class Student(models.Model):
 
     def __str__(self):
         return self.name
+    def save(self, *args, **kwargs):
+        # Check if this is a new instance
+        is_new = self.pk is None
+        super(Student, self).save(*args, **kwargs)
+        if is_new:
+            # Call your function here
+            print('training')
+            train_and_store_encodings()
+            
+
 class Course(models.Model):
     COURSE_TYPES = (
         ('theoretical', 'Theoretical'),
