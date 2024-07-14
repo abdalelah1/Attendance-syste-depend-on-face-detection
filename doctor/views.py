@@ -11,6 +11,7 @@ import base64
 from django.core.files.base import ContentFile
 # Create your views here.
 from django.contrib.auth.decorators import login_required
+@login_required
 def dashboard(request):
     user = request.user
     if user.is_staff:
