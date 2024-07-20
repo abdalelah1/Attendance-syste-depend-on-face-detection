@@ -3,12 +3,18 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+
 
 from doctor.recognize_student import train_and_store_encodings
 class College(models.Model):
     name = models.CharField(max_length=255)
     warning_threshold = models.DecimalField(max_digits=5, decimal_places=2, default=12)  # نسبة الإنذار
     deprivation_threshold = models.DecimalField(max_digits=5, decimal_places=2, default=15)  # نسبة الحرمان
+    late_minutes_threshold = models.IntegerField(default=5)  # عدد الدقائق التي يعتبر بعدها الطالب متأخراً
+    late_to_absence_threshold = models.IntegerField(default=2)  # عدد مرات التأخير التي تعتبر غياباً
+
+
     def __str__(self):
         return self.name
 
@@ -84,14 +90,15 @@ class CourseConditions(models.Model):
         return f"Conditions for {self.course.name}"
 
 class AttendanceRecord(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)
-    date = models.DateField(auto_now_add=True)
-    week_number = models.PositiveIntegerField()
-    present = models.BooleanField(default=False)
+        student = models.ForeignKey(Student, on_delete=models.CASCADE)
+        course = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)
+        date = models.DateTimeField(default=timezone.now)  # استخدم DateTimeField بدلاً من DateField
+        week_number = models.PositiveIntegerField()
+        present = models.BooleanField(default=False)
+        is_late = models.BooleanField(null=True, blank=True)
 
-    def __str__(self):
-        return f"{self.student.name} - {self.course.name} - {self.date}"
+        def __str__(self):
+            return f"{self.student.name} - {self.course.name} - {self.date}"
 
 class AttendanceSummary(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
@@ -124,5 +131,24 @@ class Enrollment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     enrollment_date = models.DateField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ('student', 'course')
+
+    def save(self, *args, **kwargs):
+        # Check if enrollment already exists
+        if Enrollment.objects.filter(student=self.student, course=self.course).exists():
+            raise ValidationError(f"{self.student.name} is already enrolled in {self.course.name}")
+
+        # Save the Enrollment instance
+        super().save(*args, **kwargs)
+
+        # Check if the enrolled course is theoretical
+        if self.course.course_type == 'theoretical':
+            # Find the corresponding practical course
+            practical_course = Course.objects.filter(parent_course=self.course).first()
+            if practical_course:
+                # Enroll the student in the practical course
+                Enrollment.objects.get_or_create(student=self.student, course=practical_course)
+    
     def __str__(self):
         return f"{self.student.name} - {self.course.name}"

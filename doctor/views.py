@@ -8,6 +8,7 @@ from .recognize_student import *
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import base64
+from datetime import datetime, timedelta
 from django.core.files.base import ContentFile
 # Create your views here.
 from django.contrib.auth.decorators import login_required
@@ -163,15 +164,11 @@ def receive_photo(request):
         ext = format.split('/')[-1]
         image_data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
         
-        # Save the received image temporarily
         temp_image_path = os.path.join(settings.MEDIA_ROOT, 'temp', 'temp_image.' + ext)
         with open(temp_image_path, 'wb') as f:
             f.write(image_data.read())
 
-        # Call recognize_student function with the saved image path
         student_id = recognize_student(temp_image_path)
-
-        # Delete the temporary image file if needed
         os.remove(temp_image_path)
 
         if student_id:
@@ -180,7 +177,24 @@ def receive_photo(request):
             if not Enrollment.objects.filter(student=student, course=course).exists():
                 return JsonResponse({'message': 'Student is not enrolled in this course!'})
 
-            # Check if attendance record already exists
+            attendance_time = timezone.now()  # Get current time with timezone
+            print('attendance_time',attendance_time)
+            college = course.college
+
+            first_attendance_record = AttendanceRecord.objects.filter(course=course, week_number=week_number).order_by('date').first()
+
+            if first_attendance_record:
+                # Ensure that both dates are timezone-aware
+                lecture_start_time =first_attendance_record.date
+                print("First attendance record date and time:", first_attendance_record.date)
+                print("Lecture start time:", lecture_start_time.time())
+            else:
+                lecture_start_time = attendance_time  # If no record found, use current time
+
+            # Make sure lecture_start_time is timezone-aware
+            if timezone.is_naive(lecture_start_time):
+                lecture_start_time = timezone.make_aware(lecture_start_time)
+
             attendance_record, created = AttendanceRecord.objects.get_or_create(
                 student=student,
                 course=course,
@@ -189,40 +203,81 @@ def receive_photo(request):
             )
 
             if not created:
-                # If the record already exists, just mark it as present
                 attendance_record.present = True
-                attendance_record.save()
-            
-            # Calculate the absence percentage
+
+            late_threshold = college.late_minutes_threshold  # Number of minutes to consider late
+            absence_threshold = 10  # Number of minutes to consider absent
+
+            # Ensure attendance_time is timezone-aware
+            if timezone.is_naive(attendance_time):
+                attendance_time = timezone.make_aware(attendance_time)
+
+            if attendance_time > lecture_start_time + timedelta(minutes=late_threshold):
+                attendance_record.is_late = True
+            else:
+                  attendance_record.is_late = False
+
+            attendance_record.save()
+
             calculate_absence_percentage(student, course)
             
-            return JsonResponse({'message': f'Photo received successfully! Student Name: {student.name} , Student ID: {student.student_id} '})
+            return JsonResponse({'message': f'Photo received successfully! Student Name: {student.name}, Student ID: {student.student_id}'})
         else:
             return JsonResponse({'message': 'Student not recognized!'})
-
-    return JsonResponse({'error': 'Invalid request method'}, status=400)
 def logout_view(request):
     logout(request)
     return redirect('home')
-def calculate_absence_percentage(student, course):       
+def calculate_absence_percentage(student, course):
+    # الحصول على شروط الدورة المتعلقة بالكلية
+    college = course.college
+    late_minutes_threshold = college.late_minutes_threshold
+    late_to_absence_threshold = college.late_to_absence_threshold
+
+    # حساب عدد التأخيرات وعدد الأسابيع التي يعتبر فيها الطالب غائباً
+    late_count = AttendanceRecord.objects.filter(student=student, course=course, is_late=True).count()
     absent_weeks = AttendanceRecord.objects.filter(student=student, course=course, present=False).count()
+
+    # تحويل التأخيرات إلى عدد غيابات
+    late_as_absences = late_count // late_to_absence_threshold
+
+    # تحديد نسبة الغياب بناءً على نوع الدورة
     if course.course_type == 'theoretical':
         course_conditions = course.conditions
-        absence_percentage=absent_weeks * float(course_conditions.theoretical_percentage)
+        absence_percentage = (absent_weeks + late_as_absences) * float(course_conditions.theoretical_percentage)
+
+        # حساب نسبة الغياب للدورة العملية المرتبطة إذا كانت موجودة
+        practical_course = course.practical_courses.first()
+        if practical_course:
+            practical_absent_weeks = AttendanceRecord.objects.filter(student=student, course=practical_course, present=False).count()
+            practical_late_count = AttendanceRecord.objects.filter(student=student, course=practical_course, is_late=True).count()
+            practical_late_as_absences = practical_late_count // late_to_absence_threshold
+            practical_absence_percentage = (practical_absent_weeks + practical_late_as_absences) * float(practical_course.parent_course.conditions.practical_percentage)
+            total_absence_percentage = absence_percentage + practical_absence_percentage
+        else:
+            total_absence_percentage = absence_percentage
     else:
         course_conditions = course.parent_course.conditions
-        absence_percentage = absent_weeks * float(course_conditions.practical_percentage)
-    print(absence_percentage)
-    attendance_summary, created = AttendanceSummary.objects.get_or_create(
-            student=student,
-            course=course,
-            defaults={'percentage': absence_percentage}
-        )
+        absence_percentage = (absent_weeks + late_as_absences) * float(course_conditions.practical_percentage)
 
-        # إذا كان السجل موجودًا مسبقًا، تحديث النسبة
+        # حساب نسبة الغياب للدورة النظرية المرتبطة إذا كانت موجودة
+        theoretical_course = course.parent_course
+        theoretical_absent_weeks = AttendanceRecord.objects.filter(student=student, course=theoretical_course, present=False).count()
+        theoretical_late_count = AttendanceRecord.objects.filter(student=student, course=theoretical_course, is_late=True).count()
+        theoretical_late_as_absences = theoretical_late_count // late_to_absence_threshold
+        theoretical_absence_percentage = (theoretical_absent_weeks + theoretical_late_as_absences) * float(theoretical_course.conditions.theoretical_percentage)
+        total_absence_percentage = absence_percentage + theoretical_absence_percentage
+
+    print(total_absence_percentage)
+    attendance_summary, created = AttendanceSummary.objects.get_or_create(
+        student=student,
+        course=course,
+        defaults={'percentage': total_absence_percentage}
+    )
+
     if not created:
-            attendance_summary.percentage = absence_percentage
-            attendance_summary.save()
+        attendance_summary.percentage = total_absence_percentage
+        attendance_summary.save()
+
 def student_list(request, course_id, status):
     doctor = request.user.doctor
     courses = Course.objects.filter(doctor=doctor)
@@ -268,3 +323,21 @@ def student_list(request, course_id, status):
         'courses': courses
     }
     return render(request, 'students_list/students_list.html', context)
+def end_section(request, course_id, week_number):
+    course = get_object_or_404(Course, id=course_id)
+    enrollments = Enrollment.objects.filter(course=course)
+    
+    for enrollment in enrollments:
+        student = enrollment.student
+        attendance_record, created = AttendanceRecord.objects.get_or_create(
+            student=student, 
+            course=course, 
+            week_number=week_number,
+            defaults={'present': False,'is_late': None}
+        )
+        if created:
+            attendance_record.present = False
+            attendance_record.is_late=None
+            attendance_record.save()
+
+    return redirect('weekly_attendance', course_id=course_id, week_number=week_number - 1)

@@ -12,8 +12,6 @@ path('update/attendance/<int:student_id>/<int:week_number>/<str:course_id>/', up
 path('receive_photo/', receive_photo, name='receive_photo'),
 path('photo_capture/<str:course_id>/<str:week_number>/', photo_capture, name='photo_capture'),
 path('students/<int:course_id>/<str:status>/', student_list, name='student_list'),
-
-
-
+path('end_section/<int:course_id>/<int:week_number>/', end_section, name='end_section'),
 
 ]

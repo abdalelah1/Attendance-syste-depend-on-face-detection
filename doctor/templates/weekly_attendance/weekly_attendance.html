@@ -8,6 +8,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Attendance - Week {{ week_number }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrQkTyH0PgTZ8abkM7FJqAZtN0nFgU0Gk6GG+2v6YgB0Z2VGdscb5A09ZjM9fxYySn32kHq8x1wePm7yaA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -196,6 +198,7 @@
                 <th>Student ID</th>
                 <th>Name</th>
                 <th>Attendance</th>
+                <th>Late</th> <!-- العمود الجديد للتأخير -->
                 <th>Summary</th>
                 <th>Action</th>
             </tr>
@@ -215,6 +218,20 @@
                 {% else %}
                 <td><span class="">Null</span></td>
                 {% endif %}
+                  <!-- عمود التأخير -->
+            <td>
+                {% if entry.attendance_record %}
+                    {% if entry.attendance_record.is_late == True %}
+                    <span style="color: red;">✗ Late</span>
+                    {% elif entry.attendance_record.is_late == False %}
+                    <span style="color: green;">✓ On Time</span>
+                    {% else %}
+                    <span style="color: green;">N/A</span>
+                    {% endif %}
+                {% else %}
+                    N/A
+                {% endif %}
+            </td>
                 <td>
                     {% if entry.attendance_summary %}
                         {{ entry.attendance_summary.percentage }} %

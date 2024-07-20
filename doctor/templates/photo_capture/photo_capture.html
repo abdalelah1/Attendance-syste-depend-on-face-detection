@@ -77,7 +77,7 @@
         <div id="frame"></div>
     </div>
     <button id="capture"><i class="fas fa-camera"></i> Capture Photo</button>
-    <a id="exit" href="{% url 'home' %}"><i class="fas fa-sign-out-alt"></i> Exit</a>
+    <a id="exit" href="{% url 'end_section' course.id week_number %}"><i class="fas fa-sign-out-alt"></i> End Section</a>
     <div id="preview">
         <img id="photo" src="" alt="Captured Photo">
         <div>

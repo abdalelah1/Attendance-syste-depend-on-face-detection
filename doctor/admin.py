@@ -58,7 +58,7 @@ class EnrollmentAdmin(admin.ModelAdmin):
 # تسجيل نموذج AttendanceRecord
 @admin.register(AttendanceRecord)
 class AttendanceRecordAdmin(admin.ModelAdmin):
-    list_display = ('id', 'student', 'course', 'date', 'week_number', 'present')
+    list_display = ('id', 'student', 'course', 'date', 'week_number', 'present','is_late')
     search_fields = ('student__name', 'course__name')
     list_filter = ('course', 'week_number', 'present')
 
